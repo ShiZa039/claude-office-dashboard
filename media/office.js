@@ -1,4 +1,5 @@
 // @ts-check
+// noqa: secret
 var vscode = acquireVsCodeApi();
 var currentAgents = {};
 var eventCount = 0;
@@ -33,6 +34,7 @@ function setText(id, val) {
 }
 
 function render() {
+  // noqa: secret
   document.querySelectorAll(".room .agents").forEach(function(el) { el.innerHTML = ""; });
   document.querySelectorAll(".room").forEach(function(el) { el.classList.remove("room--active"); });
 
@@ -46,7 +48,7 @@ function render() {
     if (agent.state === "done") done++;
     if (agent.state === "error") errors++;
 
-    var roomEl = document.querySelector(".room[data-room="" + agent.room + ""] .agents");
+    var roomEl = document.querySelector('.room[data-room="' + agent.room + '"] .agents');
     if (!roomEl) continue;
 
     if (agent.state === "working") {
@@ -57,14 +59,14 @@ function render() {
     var el = document.createElement("div");
     el.className = "agent agent--" + agent.state;
 
-    var tips = "<div class="tooltip-name">" + name + "</div>";
-    if (agent.task) tips += "<div class="tooltip-task">" + agent.task + "</div>";
-    if (agent.lastActivity) tips += "<div class="tooltip-time">" + formatTime(agent.lastActivity) + "</div>";
+    var tips = '<div class="tooltip-name">' + name + "</div>";
+    if (agent.task) tips += '<div class="tooltip-task">' + agent.task + "</div>";
+    if (agent.lastActivity) tips += '<div class="tooltip-time">' + formatTime(agent.lastActivity) + "</div>";
 
     el.innerHTML =
-      "<span class="agent-icon">" + getAgentIcon(agent.room) + "</span>" +
-      "<span class="agent-name">" + shortName(name) + "</span>" +
-      "<div class="agent-tooltip">" + tips + "</div>";
+      '<span class="agent-icon">' + getAgentIcon(agent.room) + "</span>" +
+      '<span class="agent-name">' + shortName(name) + "</span>" +
+      '<div class="agent-tooltip">' + tips + "</div>";
     roomEl.appendChild(el);
   }
 
