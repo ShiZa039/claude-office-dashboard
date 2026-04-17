@@ -145,24 +145,27 @@ interface AgentUpdate {
 
 ## Этапы реализации
 
-### Этап 1 — MVP (файл + расширение + статичная карта)
-- [ ] Scaffold VSCode extension (yo code → TypeScript)
-- [ ] Хук-скрипт `emit-agent-event.sh`
-- [ ] `eventWatcher.ts` — fs.watch + tail новых строк
-- [ ] `eventParser.ts` — парсинг JSONL
-- [ ] `agentState.ts` — Map<agentName, AgentState>
-- [ ] `provider.ts` — WebviewViewProvider
-- [ ] `office.html` — статичная карта с CSS Grid (комнаты)
-- [ ] `office.js` — приём postMessage, обновление DOM
-- [ ] Настройка хуков в BAZA_CRM
-- [ ] Ручное тестирование: запустить агента → увидеть на карте
+### Этап 1 — MVP (файл + расширение + статичная карта) ✅
+- [x] Scaffold VSCode extension (TypeScript)
+- [x] Хук-скрипт `emit-agent-event.py` (Python, пишет JSONL)
+- [x] `eventWatcher.ts` — fs.watch + polling fallback 1с
+- [x] `eventParser.ts` — парсинг JSONL
+- [x] `agentState.ts` — Map<agentName, AgentState> + recentEvents (200 макс)
+- [x] `provider.ts` — WebviewViewProvider с CSP nonce
+- [x] `office.html` — карта с CSS Grid (9 комнат)
+- [x] `office.js` — приём postMessage, обновление DOM, timeline canvas
+- [x] Настройка хуков в BAZA_CRM `settings.local.json`
+- [x] Тестирование: backend-lead, frontend-lead, qa-lead параллельно
 
-### Этап 2 — Полировка
-- [ ] SVG-аватарки для каждого типа агента
-- [ ] Анимации переходов (CSS transitions)
-- [ ] Tooltip при наведении (задача, время)
-- [ ] Счётчик: сколько агентов работало, сколько задач выполнено
-- [ ] Auto-scroll лог событий внизу карты
+### Этап 2 — Полировка ✅
+- [x] SVG-аватарки для каждого типа агента (`avatars.js`, 30+ иконок + маппинг)
+- [x] Анимации переходов (agentAppear, pulse, shake, blink, tooltipIn, logSlide)
+- [x] Tooltip при наведении (имя, задача, время)
+- [x] Счётчик: working / done / errors / total / completed за сессию
+- [x] Auto-scroll лог событий (50 записей макс)
+- [x] Timeline canvas (5 мин окно, цвета по комнатам)
+- [x] Room accent colors + room--active подсветка
+- [x] Status dot (online/offline/idle)
 
 ### Этап 3 — Расширения
 - [ ] Поддержка нескольких сессий (tabs/colors)

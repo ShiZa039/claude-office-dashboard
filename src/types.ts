@@ -5,7 +5,7 @@ export interface AgentEvent {
   agent: string;
   task?: string;
   result?: string;
-  session: string;
+  session?: string;
 }
 
 /** Computed agent state for display */

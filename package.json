@@ -2,7 +2,7 @@
   "name": "claude-office-dashboard",
   "displayName": "Claude Office Dashboard",
   "description": "Real-time agent activity dashboard for Claude Code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "shiza039",
   "engines": {
     "vscode": "^1.85.0"

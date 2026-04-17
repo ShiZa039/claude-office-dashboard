@@ -28,15 +28,13 @@ def main():
     event = {"ts": ts, "event": event_type, "session": session}
 
     if event_type in ("agent_start", "agent_stop"):
-        event["agent"] = data.get("agent_type", data.get("subagent_type", "general-purpose"))
+        event["agent"] = data.get("agent_name", data.get("agent_type", "general-purpose"))
         if event_type == "agent_stop":
-            # last_assistant_message contains the agent's final response
             msg = data.get("last_assistant_message", "")
             event["task"] = msg[:80] if msg else ""
             event["result"] = "success"
         else:
-            # agent_start has no description in payload, leave empty
-            event["task"] = ""
+            event["task"] = data.get("agent_name", "")
 
     with open(event_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")

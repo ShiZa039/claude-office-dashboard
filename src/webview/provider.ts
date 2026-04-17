@@ -6,7 +6,7 @@ import { AgentState } from '../types';
 export class OfficeDashboardProvider {
   private panel: vscode.WebviewPanel | null = null;
   private webviewReady = false;
-  private pendingState: Record<string, AgentState> | null = null;
+  private pendingState: { agents: Record<string, AgentState> } | null = null;
 
   constructor(private extensionUri: vscode.Uri) {}
 
@@ -36,13 +36,11 @@ export class OfficeDashboardProvider {
 
     this.panel.webview.html = this.getHtml(this.panel.webview);
 
-    // Listen for ready signal from webview JS
     this.panel.webview.onDidReceiveMessage((msg) => {
       if (msg.type === 'webview_ready') {
         this.webviewReady = true;
-        // Flush any pending state
         if (this.pendingState) {
-          this.postToWebview(this.pendingState);
+          this.postToWebview(this.pendingState.agents);
           this.pendingState = null;
         }
         if (this.onReady) {
@@ -61,8 +59,7 @@ export class OfficeDashboardProvider {
     if (this.panel && this.webviewReady) {
       this.postToWebview(agents);
     } else {
-      // Store for later — will be sent when webview signals ready
-      this.pendingState = agents;
+      this.pendingState = { agents };
     }
   }
 
@@ -98,10 +95,14 @@ export class OfficeDashboardProvider {
     const iconsUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'media', 'icons.js')
     );
+    const avatarsUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'avatars.js')
+    );
 
     html = html.replace('{{cssUri}}', cssUri.toString());
     html = html.replace('{{jsUri}}', jsUri.toString());
     html = html.replace('{{iconsUri}}', iconsUri.toString());
+    html = html.replace('{{avatarsUri}}', avatarsUri.toString());
     html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
     html = html.replace(/\{\{nonce\}\}/g, nonce);
 

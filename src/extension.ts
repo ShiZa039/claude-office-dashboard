@@ -7,10 +7,11 @@ import { AgentStateStore } from './agentState';
 import { OfficeDashboardProvider } from './webview/provider';
 
 let watcher: EventWatcher | null = null;
+let store: AgentStateStore | null = null;
 const log = vscode.window.createOutputChannel('Claude Office');
 
 export function activate(context: vscode.ExtensionContext) {
-  const store = new AgentStateStore();
+  store = new AgentStateStore();
   const provider = new OfficeDashboardProvider(context.extensionUri);
 
   const configPath = vscode.workspace
@@ -20,15 +21,16 @@ export function activate(context: vscode.ExtensionContext) {
   const eventsFile = configPath || path.join(os.homedir(), '.claude', 'agent-events.jsonl');
   log.appendLine(`Claude Office: watching ${eventsFile}`);
 
-  // Broadcast state to webview (provider buffers if webview not ready yet)
   const broadcastState = () => {
+    if (!store) return;
     provider.updateAgents(store.getSnapshot());
   };
 
   store.onChange = broadcastState;
+  store.start();
 
-  // Start watching
   watcher = new EventWatcher(eventsFile, (events) => {
+    if (!store) return;
     for (const event of events) {
       store.processEvent(event);
     }
@@ -43,6 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   const clearCmd = vscode.commands.registerCommand('claudeOffice.clearEvents', () => {
+    if (!store) return;
     store.clear();
     try {
       fs.writeFileSync(eventsFile, '');
@@ -60,5 +63,9 @@ export function deactivate() {
   if (watcher) {
     watcher.stop();
     watcher = null;
+  }
+  if (store) {
+    store.stop();
+    store = null;
   }
 }

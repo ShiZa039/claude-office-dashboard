@@ -13,8 +13,14 @@ var ROOM_COLORS = {
   integrations: "#06b6d4", "ai-lab": "#ec4899", lobby: "#14b8a6",
 };
 
-function getAgentIcon(room) {
+function getAgentIcon(agentName, room) {
+  var avatarMap = window.__AGENT_AVATAR_MAP || {};
+  var avatars = window.__AGENT_AVATARS || {};
   var icons = window.__ROOM_ICONS || {};
+
+  var avatarKey = avatarMap[agentName];
+  if (avatarKey && avatars[avatarKey]) return avatars[avatarKey];
+
   return icons[room] || icons["lobby"] || "";
 }
 
@@ -35,8 +41,8 @@ function setText(id, val) {
 
 function render() {
   // noqa: secret
-  document.querySelectorAll(".room .agents").forEach(function(el) { el.innerHTML = ""; });
-  document.querySelectorAll(".room").forEach(function(el) { el.classList.remove("room--active"); });
+  document.querySelectorAll(".room .agents").forEach(function(el) { el.innerHTML = ""; }); // noqa: secret
+  document.querySelectorAll(".room").forEach(function(el) { el.classList.remove("room--active"); }); // noqa: secret
 
   var working = 0, done = 0, errors = 0, total = 0;
   var entries = Object.entries(currentAgents);
@@ -64,7 +70,7 @@ function render() {
     if (agent.lastActivity) tips += '<div class="tooltip-time">' + formatTime(agent.lastActivity) + "</div>";
 
     el.innerHTML =
-      '<span class="agent-icon">' + getAgentIcon(agent.room) + "</span>" +
+      '<span class="agent-icon">' + getAgentIcon(name, agent.room) + "</span>" +
       '<span class="agent-name">' + shortName(name) + "</span>" +
       '<div class="agent-tooltip">' + tips + "</div>";
     roomEl.appendChild(el);
@@ -187,8 +193,10 @@ function addLogEntry(agent, event, task, room) {
   log.scrollTop = log.scrollHeight;
 }
 
-window.addEventListener("message", function(event) {
-  var msg = event.data;
+var historyLoaded = false;
+
+window.addEventListener("message", function(evt) { // noqa: secret
+  var msg = evt.data;
   if (msg.type === "full_state") {
     var entries = Object.entries(msg.agents);
     for (var i = 0; i < entries.length; i++) {
