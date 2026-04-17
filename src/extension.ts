@@ -42,6 +42,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   provider.onReady = broadcastState;
 
+  const viewRegistration = vscode.window.registerWebviewViewProvider(
+    OfficeDashboardProvider.viewId,
+    provider,
+    { webviewOptions: { retainContextWhenHidden: true } },
+  );
+
   const showCmd = vscode.commands.registerCommand('claudeOffice.showDashboard', () => {
     provider.show();
   });
@@ -91,7 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  context.subscriptions.push(showCmd, clearCmd, cfgChange);
+  context.subscriptions.push(viewRegistration, showCmd, clearCmd, cfgChange);
 }
 
 export function deactivate() {

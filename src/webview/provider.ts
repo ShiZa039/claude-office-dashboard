@@ -3,8 +3,10 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { AgentState } from '../types';
 
-export class OfficeDashboardProvider {
-  private panel: vscode.WebviewPanel | null = null;
+export class OfficeDashboardProvider implements vscode.WebviewViewProvider {
+  public static readonly viewId = 'claudeOffice.dashboard';
+
+  private view: vscode.WebviewView | null = null;
   private webviewReady = false;
   private pendingState: { agents: Record<string, AgentState> } | null = null;
   private lastUsage: unknown = null;
@@ -15,55 +17,49 @@ export class OfficeDashboardProvider {
   /** Callback invoked when the webview signals it's ready */
   onReady?: () => void;
 
-  show(): void {
-    if (this.panel) {
-      this.panel.reveal();
-      return;
-    }
-
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ): void {
+    this.view = webviewView;
     this.webviewReady = false;
 
-    this.panel = vscode.window.createWebviewPanel(
-      'claudeOffice',
-      'Claude Office',
-      vscode.ViewColumn.Beside,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(this.extensionUri, 'media'),
-        ],
-      }
-    );
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
+    };
 
-    this.panel.webview.html = this.getHtml(this.panel.webview);
+    webviewView.webview.html = this.getHtml(webviewView.webview);
 
-    this.panel.webview.onDidReceiveMessage((msg) => {
-      if (msg.type === 'webview_ready') {
-        this.webviewReady = true;
-        if (this.pendingState) {
-          this.postToWebview(this.pendingState.agents);
-          this.pendingState = null;
-        }
-        if (this.lastUsage !== null) {
-          this.panel?.webview.postMessage({ type: 'usage_update', data: this.lastUsage });
-        } else if (this.lastUsageError) {
-          this.panel?.webview.postMessage({ type: 'usage_error', message: this.lastUsageError });
-        }
-        if (this.onReady) {
-          this.onReady();
-        }
+    webviewView.webview.onDidReceiveMessage((msg) => {
+      if (msg.type !== 'webview_ready') return;
+      this.webviewReady = true;
+      if (this.pendingState) {
+        this.postToWebview(this.pendingState.agents);
+        this.pendingState = null;
       }
+      if (this.lastUsage !== null) {
+        webviewView.webview.postMessage({ type: 'usage_update', data: this.lastUsage });
+      } else if (this.lastUsageError) {
+        webviewView.webview.postMessage({ type: 'usage_error', message: this.lastUsageError });
+      }
+      this.onReady?.();
     });
 
-    this.panel.onDidDispose(() => {
-      this.panel = null;
+    webviewView.onDidDispose(() => {
+      this.view = null;
       this.webviewReady = false;
     });
   }
 
+  /** Focus the dashboard view in the Activity Bar. */
+  show(): void {
+    vscode.commands.executeCommand(`${OfficeDashboardProvider.viewId}.focus`);
+  }
+
   updateAgents(agents: Record<string, AgentState>): void {
-    if (this.panel && this.webviewReady) {
+    if (this.view && this.webviewReady) {
       this.postToWebview(agents);
     } else {
       this.pendingState = { agents };
@@ -73,29 +69,24 @@ export class OfficeDashboardProvider {
   updateUsage(data: unknown): void {
     this.lastUsage = data;
     this.lastUsageError = null;
-    if (this.panel && this.webviewReady) {
-      this.panel.webview.postMessage({ type: 'usage_update', data });
+    if (this.view && this.webviewReady) {
+      this.view.webview.postMessage({ type: 'usage_update', data });
     }
   }
 
   reportUsageError(message: string): void {
     this.lastUsageError = message;
-    if (this.panel && this.webviewReady) {
-      this.panel.webview.postMessage({ type: 'usage_error', message });
+    if (this.view && this.webviewReady) {
+      this.view.webview.postMessage({ type: 'usage_error', message });
     }
   }
 
   isVisible(): boolean {
-    return this.panel !== null && this.webviewReady;
+    return this.view !== null && this.webviewReady;
   }
 
   private postToWebview(agents: Record<string, AgentState>): void {
-    if (this.panel) {
-      this.panel.webview.postMessage({
-        type: 'full_state',
-        agents,
-      });
-    }
+    this.view?.webview.postMessage({ type: 'full_state', agents });
   }
 
   private getHtml(webview: vscode.Webview): string {
@@ -104,21 +95,19 @@ export class OfficeDashboardProvider {
 
     let html = fs.readFileSync(htmlPath, 'utf-8');
 
-    // Generate nonce for CSP
     const nonce = this.getNonce();
 
-    // Replace resource paths for CSP
     const cssUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'office.css')
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'office.css'),
     );
     const jsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'office.js')
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'office.js'),
     );
     const iconsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'icons.js')
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'icons.js'),
     );
     const avatarsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'avatars.js')
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'avatars.js'),
     );
 
     html = html.replace('{{cssUri}}', cssUri.toString());
@@ -133,7 +122,7 @@ export class OfficeDashboardProvider {
 
   private getNonce(): string {
     let text = '';
-    // noqa: secret — this is an alphabet for nonce generation, not a secret
+    // noqa: secret — alphabet for nonce generation, not a secret
     const possible = 'ABCDEFGHIJKLMNOP' + 'QRSTUVWXYZabcdef' + 'ghijklmnopqrstuv' + 'wxyz0123456789';
     for (let i = 0; i < 32; i++) {
       text += possible.charAt(Math.floor(Math.random() * possible.length));

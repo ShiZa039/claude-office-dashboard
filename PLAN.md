@@ -168,7 +168,9 @@ interface AgentUpdate {
 - [x] Status dot (online/offline/idle)
 
 ### Этап 3 — Расширения
-- [ ] Поддержка нескольких сессий (tabs/colors)
-- [ ] История: timeline за сессию
-- [ ] Звуковые эффекты (опционально, для fun)
+- [x] ~~Поддержка нескольких сессий (tabs/colors)~~ — откачено в v0.2.0, single-session
+- [x] TTL stale-агентов (10 мин) + periodic sweep 30 сек — v0.2.0
+- [x] UTF-8 fix stdin хука — commit 2c047ee
+- [x] Timeline window picker (5/15/30м/1ч/6ч) + localStorage — v0.3.0
+- [x] Plan usage panel (ccusage CLI: 5h block + weekly + weekly Opus) — v0.3.0
 - [ ] Публикация в VS Code Marketplace
