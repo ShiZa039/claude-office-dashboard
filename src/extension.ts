@@ -6,6 +6,14 @@ import { EventWatcher } from './eventWatcher';
 import { AgentStateStore } from './agentState';
 import { OfficeDashboardProvider } from './webview/provider';
 import { UsageWatcher } from './usageWatcher';
+import { getRoomForAgent } from './types';
+
+function buildRoomResolver(): (name: string) => string {
+  const customMap = vscode.workspace
+    .getConfiguration('claudeOffice')
+    .get<Record<string, string>>('agentRooms', {});
+  return (name) => getRoomForAgent(name, customMap);
+}
 
 let watcher: EventWatcher | null = null;
 let store: AgentStateStore | null = null;
@@ -14,6 +22,7 @@ const log = vscode.window.createOutputChannel('Claude Office');
 
 export function activate(context: vscode.ExtensionContext) {
   store = new AgentStateStore();
+  store.setRoomResolver(buildRoomResolver());
   const provider = new OfficeDashboardProvider(context.extensionUri);
 
   const configPath = vscode.workspace
@@ -82,6 +91,9 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   const cfgChange = vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration('claudeOffice.agentRooms') && store) {
+      store.setRoomResolver(buildRoomResolver());
+    }
     if (!e.affectsConfiguration('claudeOffice.usage')) return;
     const enabled = vscode.workspace
       .getConfiguration('claudeOffice')

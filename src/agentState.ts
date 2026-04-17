@@ -1,5 +1,7 @@
 import { AgentEvent, AgentState, getRoomForAgent } from './types';
 
+type RoomResolver = (agentName: string) => string;
+
 const DONE_TIMEOUT_MS = 5000;
 const STALE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const SWEEP_INTERVAL_MS = 30 * 1000;     // sweep every 30s
@@ -16,6 +18,16 @@ export class AgentStateStore {
   private doneTimers: Map<string, NodeJS.Timeout> = new Map();
   private recentEvents: AgentEvent[] = [];
   private sweepTimer: NodeJS.Timeout | null = null;
+  private roomResolver: RoomResolver = (name) => getRoomForAgent(name);
+
+  /** Provide a custom agent→room resolver (e.g. merged user config). */
+  setRoomResolver(resolver: RoomResolver): void {
+    this.roomResolver = resolver;
+    for (const agent of this.agents.values()) {
+      agent.room = resolver(agent.name);
+    }
+    this.onChange?.();
+  }
 
   start(): void {
     if (this.sweepTimer) return;
@@ -45,7 +57,7 @@ export class AgentStateStore {
             this.agents.set(event.agent, {
               name: event.agent,
               state: 'idle',
-              room: getRoomForAgent(event.agent),
+              room: this.roomResolver(event.agent),
               lastActivity: event.ts,
             });
           }
@@ -56,7 +68,7 @@ export class AgentStateStore {
           name: event.agent,
           state: 'working',
           task: event.task,
-          room: getRoomForAgent(event.agent),
+          room: this.roomResolver(event.agent),
           lastActivity: event.ts,
         });
         break;
@@ -68,7 +80,7 @@ export class AgentStateStore {
           name: event.agent,
           state,
           task: event.task,
-          room: getRoomForAgent(event.agent),
+          room: this.roomResolver(event.agent),
           lastActivity: event.ts,
         });
         this.scheduleDoneTimer(event.agent);
