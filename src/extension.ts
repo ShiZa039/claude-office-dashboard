@@ -5,9 +5,11 @@ import * as fs from 'fs';
 import { EventWatcher } from './eventWatcher';
 import { AgentStateStore } from './agentState';
 import { OfficeDashboardProvider } from './webview/provider';
+import { UsageWatcher } from './usageWatcher';
 
 let watcher: EventWatcher | null = null;
 let store: AgentStateStore | null = null;
+let usageWatcher: UsageWatcher | null = null;
 const log = vscode.window.createOutputChannel('Claude Office');
 
 export function activate(context: vscode.ExtensionContext) {
@@ -56,7 +58,40 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('Agent events cleared');
   });
 
-  context.subscriptions.push(showCmd, clearCmd);
+  const usageEnabled = vscode.workspace
+    .getConfiguration('claudeOffice')
+    .get<boolean>('usage.enabled', true);
+
+  if (usageEnabled) {
+    usageWatcher = new UsageWatcher(
+      log,
+      (snapshot) => provider.updateUsage(snapshot),
+      (message) => provider.reportUsageError(message),
+    );
+    usageWatcher.start();
+  }
+
+  const cfgChange = vscode.workspace.onDidChangeConfiguration((e) => {
+    if (!e.affectsConfiguration('claudeOffice.usage')) return;
+    const enabled = vscode.workspace
+      .getConfiguration('claudeOffice')
+      .get<boolean>('usage.enabled', true);
+    if (enabled && !usageWatcher) {
+      usageWatcher = new UsageWatcher(
+        log,
+        (snapshot) => provider.updateUsage(snapshot),
+        (message) => provider.reportUsageError(message),
+      );
+      usageWatcher.start();
+    } else if (!enabled && usageWatcher) {
+      usageWatcher.stop();
+      usageWatcher = null;
+    } else if (enabled && usageWatcher) {
+      usageWatcher.restart();
+    }
+  });
+
+  context.subscriptions.push(showCmd, clearCmd, cfgChange);
 }
 
 export function deactivate() {
@@ -67,5 +102,9 @@ export function deactivate() {
   if (store) {
     store.stop();
     store = null;
+  }
+  if (usageWatcher) {
+    usageWatcher.stop();
+    usageWatcher = null;
   }
 }

@@ -18,10 +18,10 @@ export interface AgentState {
 }
 
 /** Message sent from extension to webview */
-export interface WebviewMessage {
-  type: 'agent_update' | 'full_state';
-  agents: Record<string, AgentState>;
-}
+export type WebviewMessage =
+  | { type: 'agent_update' | 'full_state'; agents: Record<string, AgentState> }
+  | { type: 'usage_update'; data: unknown }
+  | { type: 'usage_error'; message: string };
 
 /** Agent-to-room mapping */
 export const AGENT_ROOMS: Record<string, string> = {

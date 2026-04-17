@@ -401,6 +401,107 @@ body {
   display: block;
 }
 
+.timeline-window-select {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--room-border);
+  border-radius: 3px;
+  font-size: 8px;
+  font-family: var(--vscode-font-family, inherit);
+  padding: 1px 4px;
+  cursor: pointer;
+  outline: none;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.timeline-window-select:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.timeline-window-select:focus-visible {
+  border-color: var(--blue);
+}
+
+/* ── Plan usage panel ── */
+.usage-panel {
+  margin-bottom: 10px;
+  background: var(--room-bg);
+  border: 1px solid var(--room-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.usage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.usage-title {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+}
+
+.usage-updated {
+  font-size: 8px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-bar {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+}
+
+.usage-bar-label {
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.usage-bar-track {
+  height: 6px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.usage-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--blue);
+  border-radius: 3px;
+  transition: width 0.5s ease, background 0.3s ease;
+}
+
+.usage-bar-fill--warn { background: var(--yellow); }
+.usage-bar-fill--crit { background: var(--red); }
+
+.usage-bar[data-kind="weekly-opus"] .usage-bar-fill { background: var(--purple); }
+.usage-bar[data-kind="weekly-opus"] .usage-bar-fill--warn { background: var(--yellow); }
+.usage-bar[data-kind="weekly-opus"] .usage-bar-fill--crit { background: var(--red); }
+
+.usage-bar-value {
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
 /* ── Event log ── */
 .log-header {
   display: flex;

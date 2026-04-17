@@ -110,9 +110,38 @@
 
     <div class="timeline-section">
       <div class="log-header">
-        <span class="log-title">Timeline (5 min)</span>
+        <span class="log-title">Timeline</span>
+        <select id="timeline-window" class="timeline-window-select" aria-label="Timeline window">
+          <option value="300000">5 min</option>
+          <option value="900000">15 min</option>
+          <option value="1800000">30 min</option>
+          <option value="3600000">1 hour</option>
+          <option value="21600000">6 hours</option>
+        </select>
       </div>
       <canvas id="timeline" class="timeline-canvas"></canvas>
+    </div>
+
+    <div class="usage-panel" id="usage-panel">
+      <div class="usage-header">
+        <span class="usage-title">Plan usage</span>
+        <span class="usage-updated" id="usage-updated">loading&hellip;</span>
+      </div>
+      <div class="usage-bar" data-kind="block">
+        <div class="usage-bar-label">5-hour block</div>
+        <div class="usage-bar-track"><div class="usage-bar-fill"></div></div>
+        <div class="usage-bar-value">&mdash;</div>
+      </div>
+      <div class="usage-bar" data-kind="weekly">
+        <div class="usage-bar-label">Weekly (all)</div>
+        <div class="usage-bar-track"><div class="usage-bar-fill"></div></div>
+        <div class="usage-bar-value">&mdash;</div>
+      </div>
+      <div class="usage-bar" data-kind="weekly-opus">
+        <div class="usage-bar-label">Weekly (Opus)</div>
+        <div class="usage-bar-track"><div class="usage-bar-fill"></div></div>
+        <div class="usage-bar-value">&mdash;</div>
+      </div>
     </div>
 
     <div class="log-header">

@@ -7,6 +7,8 @@ export class OfficeDashboardProvider {
   private panel: vscode.WebviewPanel | null = null;
   private webviewReady = false;
   private pendingState: { agents: Record<string, AgentState> } | null = null;
+  private lastUsage: unknown = null;
+  private lastUsageError: string | null = null;
 
   constructor(private extensionUri: vscode.Uri) {}
 
@@ -43,6 +45,11 @@ export class OfficeDashboardProvider {
           this.postToWebview(this.pendingState.agents);
           this.pendingState = null;
         }
+        if (this.lastUsage !== null) {
+          this.panel?.webview.postMessage({ type: 'usage_update', data: this.lastUsage });
+        } else if (this.lastUsageError) {
+          this.panel?.webview.postMessage({ type: 'usage_error', message: this.lastUsageError });
+        }
         if (this.onReady) {
           this.onReady();
         }
@@ -60,6 +67,21 @@ export class OfficeDashboardProvider {
       this.postToWebview(agents);
     } else {
       this.pendingState = { agents };
+    }
+  }
+
+  updateUsage(data: unknown): void {
+    this.lastUsage = data;
+    this.lastUsageError = null;
+    if (this.panel && this.webviewReady) {
+      this.panel.webview.postMessage({ type: 'usage_update', data });
+    }
+  }
+
+  reportUsageError(message: string): void {
+    this.lastUsageError = message;
+    if (this.panel && this.webviewReady) {
+      this.panel.webview.postMessage({ type: 'usage_error', message });
     }
   }
 

@@ -2,7 +2,7 @@
   "name": "claude-office-dashboard",
   "displayName": "Claude Office Dashboard",
   "description": "Real-time agent activity dashboard for Claude Code",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "shiza039",
   "engines": {
     "vscode": "^1.85.0"
@@ -28,6 +28,32 @@
           "type": "string",
           "default": "",
           "description": "Path to agent-events.jsonl file"
+        },
+        "claudeOffice.usage.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show plan usage panel"
+        },
+        "claudeOffice.usage.pollSeconds": {
+          "type": "number",
+          "default": 90,
+          "minimum": 30,
+          "description": "Usage refresh seconds"
+        },
+        "claudeOffice.usage.limitBlockUsd": {
+          "type": "number",
+          "default": 0,
+          "description": "Block limit USD"
+        },
+        "claudeOffice.usage.limitWeeklyUsd": {
+          "type": "number",
+          "default": 0,
+          "description": "Weekly limit USD"
+        },
+        "claudeOffice.usage.limitWeeklyOpusUsd": {
+          "type": "number",
+          "default": 0,
+          "description": "Opus weekly limit USD"
         }
       }
     }

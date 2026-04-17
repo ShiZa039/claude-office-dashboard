@@ -6,6 +6,9 @@ var eventCount = 0;
 var completedCount = 0;
 var timelineEvents = [];
 var agentRoomCache = {};
+var TIMELINE_WINDOW_KEY = "claudeOffice.timelineWindowMs";
+var currentTimelineMs = 5 * 60 * 1000;
+var lastUsage = null;
 
 var ROOM_COLORS = {
   directors: "#eab308", backend: "#3b82f6", frontend: "#a855f7",
@@ -121,7 +124,7 @@ function renderTimeline() {
   }
 
   var now = Date.now();
-  var windowMs = 5 * 60 * 1000;
+  var windowMs = currentTimelineMs;
   var startTime = now - windowMs;
 
   ctx.fillStyle = "#2a2a2a";
@@ -143,13 +146,28 @@ function renderTimeline() {
     drawSpan(ctx, W, H, startTime, now, s.start, now, s.room, true);
   }
 
+  drawTimelineGrid(ctx, W, H, windowMs);
+}
+
+function drawTimelineGrid(ctx, W, H, windowMs) {
   ctx.fillStyle = "#555";
   ctx.font = "7px sans-serif";
   ctx.textAlign = "center";
-  for (var m = 1; m <= 4; m++) {
-    var x = (m / 5) * W;
+
+  var totalMin = windowMs / 60000;
+  var step, unit;
+  if (totalMin <= 5) { step = 1; unit = "m"; }
+  else if (totalMin <= 15) { step = 3; unit = "m"; }
+  else if (totalMin <= 30) { step = 5; unit = "m"; }
+  else if (totalMin <= 60) { step = 15; unit = "m"; }
+  else { step = 60; unit = "h"; }
+
+  for (var elapsed = step; elapsed < totalMin; elapsed += step) {
+    var x = (elapsed / totalMin) * W;
     ctx.fillRect(x, 0, 0.5, H);
-    ctx.fillText("-" + (5 - m) + "m", x, H - 1);
+    var remaining = totalMin - elapsed;
+    var label = unit === "h" ? "-" + Math.round(remaining / 60) + "h" : "-" + Math.round(remaining) + "m";
+    ctx.fillText(label, x, H - 1);
   }
 }
 
@@ -213,8 +231,94 @@ window.addEventListener("message", function(evt) { // noqa: secret
     }
     currentAgents = msg.agents;
     render();
+  } else if (msg.type === "usage_update") {
+    lastUsage = msg.data;
+    renderUsage();
+  } else if (msg.type === "usage_error") {
+    renderUsageError(msg.message);
   }
 });
 
+function initTimelineSelector() {
+  var sel = document.getElementById("timeline-window");
+  if (!sel) return;
+  try {
+    var saved = localStorage.getItem(TIMELINE_WINDOW_KEY);
+    if (saved) {
+      var n = parseInt(saved, 10);
+      if (!isNaN(n) && n > 0) currentTimelineMs = n;
+    }
+  } catch(e) { /* localStorage unavailable */ }
+  sel.value = String(currentTimelineMs);
+  sel.addEventListener("change", function() {
+    var n = parseInt(sel.value, 10);
+    if (!isNaN(n) && n > 0) {
+      currentTimelineMs = n;
+      try { localStorage.setItem(TIMELINE_WINDOW_KEY, String(n)); } catch(e) {}
+      renderTimeline();
+    }
+  });
+}
+
+function formatUsd(n) {
+  if (n == null || isNaN(n)) return "\u2014";
+  if (n < 1) return "$" + n.toFixed(2);
+  if (n < 100) return "$" + n.toFixed(2);
+  return "$" + n.toFixed(0);
+}
+
+function formatDuration(mins) {
+  if (mins == null || isNaN(mins)) return "";
+  if (mins < 60) return Math.round(mins) + "m";
+  var h = Math.floor(mins / 60), m = Math.round(mins % 60);
+  return h + "h" + (m > 0 ? " " + m + "m" : "");
+}
+
+function updateBar(kind, cost, limit, subtitle) {
+  var bar = document.querySelector('.usage-bar[data-kind="' + kind + '"]');
+  if (!bar) return;
+  var fill = bar.querySelector(".usage-bar-fill");
+  var value = bar.querySelector(".usage-bar-value");
+  var pct = 0;
+  if (limit && limit > 0) pct = Math.min(100, (cost / limit) * 100);
+  if (fill) {
+    fill.style.width = pct.toFixed(1) + "%";
+    fill.classList.remove("usage-bar-fill--warn", "usage-bar-fill--crit");
+    if (pct >= 90) fill.classList.add("usage-bar-fill--crit");
+    else if (pct >= 70) fill.classList.add("usage-bar-fill--warn");
+  }
+  if (value) {
+    var txt = formatUsd(cost);
+    if (limit && limit > 0) txt += " / " + formatUsd(limit) + " (" + pct.toFixed(0) + "%)";
+    if (subtitle) txt += "  \u00b7  " + subtitle;
+    value.textContent = txt;
+  }
+}
+
+function renderUsage() {
+  if (!lastUsage) return;
+  var u = lastUsage;
+  var upd = document.getElementById("usage-updated");
+  if (upd) upd.textContent = "updated " + formatTime(u.fetchedAt);
+
+  var blockSubtitle = "";
+  if (u.block) {
+    if (u.block.isActive && u.block.remainingMinutes != null) {
+      blockSubtitle = formatDuration(u.block.remainingMinutes) + " left";
+    } else if (!u.block.isActive) {
+      blockSubtitle = "no active block";
+    }
+  }
+  updateBar("block", u.block ? u.block.costUSD : 0, u.limits.block, blockSubtitle);
+  updateBar("weekly", u.weekly ? u.weekly.totalCost : 0, u.limits.weekly, "");
+  updateBar("weekly-opus", u.weekly ? u.weekly.opusCost : 0, u.limits.weeklyOpus, "");
+}
+
+function renderUsageError(message) {
+  var upd = document.getElementById("usage-updated");
+  if (upd) upd.textContent = "error: " + message;
+}
+
+initTimelineSelector();
 vscode.postMessage({ type: "webview_ready" });
 setInterval(function() { renderTimeline(); }, 2000);
