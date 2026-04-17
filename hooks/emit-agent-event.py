@@ -24,8 +24,9 @@ def main():
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     session = data.get("session_id", "unknown")
+    cwd = data.get("cwd", "")
 
-    event = {"ts": ts, "event": event_type, "session": session}
+    event = {"ts": ts, "event": event_type, "session": session, "cwd": cwd}
 
     if event_type in ("agent_start", "agent_stop"):
         event["agent"] = data.get("agent_name", data.get("agent_type", "general-purpose"))

@@ -2,7 +2,7 @@
   "name": "claude-office-dashboard",
   "displayName": "Claude Office Dashboard",
   "description": "Real-time agent activity dashboard for Claude Code",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "shiza039",
   "engines": {
     "vscode": "^1.85.0"
@@ -88,6 +88,12 @@
           "default": 0,
           "description": "Opus weekly limit USD"
         },
+        "claudeOffice.scope": {
+          "type": "string",
+          "enum": ["workspace", "global"],
+          "default": "workspace",
+          "description": "workspace = this window only; global = all Claude Code sessions"
+        },
         "claudeOffice.agentRooms": {
           "type": "object",
           "default": {},
@@ -102,7 +108,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "test": "tsc -p ./ && node out/test/eventParser.test.js && node out/test/types.test.js"
+    "test": "tsc -p ./ && node out/test/eventParser.test.js && node out/test/types.test.js && node out/test/agentState.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

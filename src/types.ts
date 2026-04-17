@@ -6,6 +6,8 @@ export interface AgentEvent {
   task?: string;
   result?: string;
   session?: string;
+  /** Working directory Claude Code was invoked from; used for per-window isolation. */
+  cwd?: string;
 }
 
 /** Computed agent state for display */
@@ -15,6 +17,7 @@ export interface AgentState {
   task?: string;
   room: string;
   lastActivity?: string;
+  cwd?: string;
 }
 
 /** Message sent from extension to webview */

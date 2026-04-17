@@ -13,12 +13,18 @@ const SWEEP_INTERVAL_MS = 30 * 1000;     // sweep every 30s
  * - Stale guard: agent_start events older than STALE_TIMEOUT_MS never mark working.
  * - Periodic sweep moves working agents to idle if their last activity is stale.
  */
+function normalizeCwd(p: string | undefined | null): string {
+  if (!p) return '';
+  return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
+
 export class AgentStateStore {
   private agents: Map<string, AgentState> = new Map();
   private doneTimers: Map<string, NodeJS.Timeout> = new Map();
   private recentEvents: AgentEvent[] = [];
   private sweepTimer: NodeJS.Timeout | null = null;
   private roomResolver: RoomResolver = (name) => getRoomForAgent(name);
+  private cwdFilter: string | null = null;
 
   /** Provide a custom agent→room resolver (e.g. merged user config). */
   setRoomResolver(resolver: RoomResolver): void {
@@ -27,6 +33,23 @@ export class AgentStateStore {
       agent.room = resolver(agent.name);
     }
     this.onChange?.();
+  }
+
+  /**
+   * Scope this store to one cwd (e.g. the current VSCode workspace folder).
+   * Events whose `cwd` doesn't match are ignored; `session_stop` resets only
+   * agents whose tracked cwd matches. Pass `null` to disable filtering.
+   */
+  setCwdFilter(cwd: string | null): void {
+    this.cwdFilter = normalizeCwd(cwd) || null;
+  }
+
+  /** Returns true if event.cwd is compatible with this store's cwd filter. */
+  private matchesCwd(eventCwd: string | undefined): boolean {
+    if (!this.cwdFilter) return true;
+    const normalized = normalizeCwd(eventCwd);
+    if (!normalized) return false;
+    return normalized === this.cwdFilter || normalized.startsWith(this.cwdFilter + '/');
   }
 
   start(): void {
@@ -42,6 +65,9 @@ export class AgentStateStore {
   }
 
   processEvent(event: AgentEvent): void {
+    // cwd-scoped store drops events from other windows/projects entirely.
+    if (!this.matchesCwd(event.cwd)) return;
+
     if (event.event === 'agent_start' || event.event === 'agent_stop') {
       this.recentEvents.push(event);
       if (this.recentEvents.length > 200) {
@@ -59,6 +85,7 @@ export class AgentStateStore {
               state: 'idle',
               room: this.roomResolver(event.agent),
               lastActivity: event.ts,
+              cwd: event.cwd,
             });
           }
           break;
@@ -70,6 +97,7 @@ export class AgentStateStore {
           task: event.task,
           room: this.roomResolver(event.agent),
           lastActivity: event.ts,
+          cwd: event.cwd,
         });
         break;
       }
@@ -82,13 +110,14 @@ export class AgentStateStore {
           task: event.task,
           room: this.roomResolver(event.agent),
           lastActivity: event.ts,
+          cwd: event.cwd,
         });
         this.scheduleDoneTimer(event.agent);
         break;
       }
 
       case 'session_stop':
-        // Any Stop hook resets all agents to idle — single-session model.
+        // Reset all agents in this (cwd-scoped) store to idle.
         for (const [name, agent] of this.agents) {
           this.clearDoneTimer(name);
           agent.state = 'idle';

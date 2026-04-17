@@ -15,6 +15,15 @@ function buildRoomResolver(): (name: string) => string {
   return (name) => getRoomForAgent(name, customMap);
 }
 
+function currentCwdFilter(): string | null {
+  const scope = vscode.workspace
+    .getConfiguration('claudeOffice')
+    .get<string>('scope', 'workspace');
+  if (scope === 'global') return null;
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  return folder ? folder.uri.fsPath : null;
+}
+
 let watcher: EventWatcher | null = null;
 let store: AgentStateStore | null = null;
 let usageWatcher: UsageWatcher | null = null;
@@ -23,6 +32,8 @@ const log = vscode.window.createOutputChannel('Claude Office');
 export function activate(context: vscode.ExtensionContext) {
   store = new AgentStateStore();
   store.setRoomResolver(buildRoomResolver());
+  store.setCwdFilter(currentCwdFilter());
+  log.appendLine(`Claude Office: cwd filter = ${currentCwdFilter() ?? '(global, no filter)'}`);
   const provider = new OfficeDashboardProvider(context.extensionUri);
 
   const configPath = vscode.workspace
@@ -93,6 +104,11 @@ export function activate(context: vscode.ExtensionContext) {
   const cfgChange = vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration('claudeOffice.agentRooms') && store) {
       store.setRoomResolver(buildRoomResolver());
+    }
+    if (e.affectsConfiguration('claudeOffice.scope') && store) {
+      store.setCwdFilter(currentCwdFilter());
+      store.clear();
+      provider.updateAgents(store.getSnapshot());
     }
     if (!e.affectsConfiguration('claudeOffice.usage')) return;
     const enabled = vscode.workspace
