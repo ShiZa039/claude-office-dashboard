@@ -2,7 +2,7 @@
   "name": "claude-office-dashboard",
   "displayName": "Claude Office Dashboard",
   "description": "Real-time agent activity dashboard for Claude Code",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "shiza039",
   "engines": {
     "vscode": "^1.85.0"
@@ -36,10 +36,24 @@
         "title": "Claude Office: Show Dashboard"
       },
       {
+        "command": "claudeOffice.openInEditor",
+        "title": "Claude Office: Open Dashboard in Editor",
+        "icon": "$(link-external)"
+      },
+      {
         "command": "claudeOffice.clearEvents",
         "title": "Claude Office: Clear Events"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "claudeOffice.openInEditor",
+          "when": "view == claudeOffice.dashboard",
+          "group": "navigation@1"
+        }
+      ]
+    },
     "configuration": {
       "title": "Claude Office Dashboard",
       "properties": {

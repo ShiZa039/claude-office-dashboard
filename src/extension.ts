@@ -52,6 +52,10 @@ export function activate(context: vscode.ExtensionContext) {
     provider.show();
   });
 
+  const openInEditorCmd = vscode.commands.registerCommand('claudeOffice.openInEditor', () => {
+    provider.openInEditor();
+  });
+
   const clearCmd = vscode.commands.registerCommand('claudeOffice.clearEvents', () => {
     if (!store) return;
     store.clear();
@@ -97,7 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  context.subscriptions.push(viewRegistration, showCmd, clearCmd, cfgChange);
+  context.subscriptions.push(viewRegistration, showCmd, openInEditorCmd, clearCmd, cfgChange);
 }
 
 export function deactivate() {

@@ -3,18 +3,25 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { AgentState } from '../types';
 
+interface WebviewSlot {
+  webview: vscode.Webview;
+  ready: boolean;
+}
+
 export class OfficeDashboardProvider implements vscode.WebviewViewProvider {
   public static readonly viewId = 'claudeOffice.dashboard';
+  public static readonly editorViewType = 'claudeOffice.dashboardEditor';
 
-  private view: vscode.WebviewView | null = null;
-  private webviewReady = false;
-  private pendingState: { agents: Record<string, AgentState> } | null = null;
+  private viewSlot: WebviewSlot | null = null;
+  private panelSlot: WebviewSlot | null = null;
+  private panel: vscode.WebviewPanel | null = null;
+  private lastState: Record<string, AgentState> | null = null;
   private lastUsage: unknown = null;
   private lastUsageError: string | null = null;
 
   constructor(private extensionUri: vscode.Uri) {}
 
-  /** Callback invoked when the webview signals it's ready */
+  /** Callback invoked when any webview signals it's ready */
   onReady?: () => void;
 
   resolveWebviewView(
@@ -22,34 +29,12 @@ export class OfficeDashboardProvider implements vscode.WebviewViewProvider {
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken,
   ): void {
-    this.view = webviewView;
-    this.webviewReady = false;
-
-    webviewView.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
-    };
-
-    webviewView.webview.html = this.getHtml(webviewView.webview);
-
-    webviewView.webview.onDidReceiveMessage((msg) => {
-      if (msg.type !== 'webview_ready') return;
-      this.webviewReady = true;
-      if (this.pendingState) {
-        this.postToWebview(this.pendingState.agents);
-        this.pendingState = null;
-      }
-      if (this.lastUsage !== null) {
-        webviewView.webview.postMessage({ type: 'usage_update', data: this.lastUsage });
-      } else if (this.lastUsageError) {
-        webviewView.webview.postMessage({ type: 'usage_error', message: this.lastUsageError });
-      }
-      this.onReady?.();
-    });
+    const slot: WebviewSlot = { webview: webviewView.webview, ready: false };
+    this.viewSlot = slot;
+    this.attachWebview(webviewView.webview, slot);
 
     webviewView.onDidDispose(() => {
-      this.view = null;
-      this.webviewReady = false;
+      if (this.viewSlot === slot) this.viewSlot = null;
     });
   }
 
@@ -58,35 +43,79 @@ export class OfficeDashboardProvider implements vscode.WebviewViewProvider {
     vscode.commands.executeCommand(`${OfficeDashboardProvider.viewId}.focus`);
   }
 
-  updateAgents(agents: Record<string, AgentState>): void {
-    if (this.view && this.webviewReady) {
-      this.postToWebview(agents);
-    } else {
-      this.pendingState = { agents };
+  /** Open (or reveal) the dashboard as an editor tab, parallel to the sidebar view. */
+  openInEditor(): void {
+    if (this.panel) {
+      this.panel.reveal(undefined, false);
+      return;
     }
+    const panel = vscode.window.createWebviewPanel(
+      OfficeDashboardProvider.editorViewType,
+      'Claude Office',
+      { viewColumn: vscode.ViewColumn.Active, preserveFocus: false },
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
+      },
+    );
+    panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'activitybar-icon.svg');
+    this.panel = panel;
+    const slot: WebviewSlot = { webview: panel.webview, ready: false };
+    this.panelSlot = slot;
+    this.attachWebview(panel.webview, slot);
+
+    panel.onDidDispose(() => {
+      if (this.panelSlot === slot) this.panelSlot = null;
+      if (this.panel === panel) this.panel = null;
+    });
+  }
+
+  updateAgents(agents: Record<string, AgentState>): void {
+    this.lastState = agents;
+    this.broadcast({ type: 'full_state', agents });
   }
 
   updateUsage(data: unknown): void {
     this.lastUsage = data;
     this.lastUsageError = null;
-    if (this.view && this.webviewReady) {
-      this.view.webview.postMessage({ type: 'usage_update', data });
-    }
+    this.broadcast({ type: 'usage_update', data });
   }
 
   reportUsageError(message: string): void {
     this.lastUsageError = message;
-    if (this.view && this.webviewReady) {
-      this.view.webview.postMessage({ type: 'usage_error', message });
-    }
+    this.broadcast({ type: 'usage_error', message });
   }
 
   isVisible(): boolean {
-    return this.view !== null && this.webviewReady;
+    return !!(this.viewSlot?.ready || this.panelSlot?.ready);
   }
 
-  private postToWebview(agents: Record<string, AgentState>): void {
-    this.view?.webview.postMessage({ type: 'full_state', agents });
+  private attachWebview(webview: vscode.Webview, slot: WebviewSlot): void {
+    webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
+    };
+    webview.html = this.getHtml(webview);
+
+    webview.onDidReceiveMessage((msg) => {
+      if (msg.type !== 'webview_ready') return;
+      slot.ready = true;
+      if (this.lastState) {
+        webview.postMessage({ type: 'full_state', agents: this.lastState });
+      }
+      if (this.lastUsage !== null) {
+        webview.postMessage({ type: 'usage_update', data: this.lastUsage });
+      } else if (this.lastUsageError) {
+        webview.postMessage({ type: 'usage_error', message: this.lastUsageError });
+      }
+      this.onReady?.();
+    });
+  }
+
+  private broadcast(message: unknown): void {
+    if (this.viewSlot?.ready) this.viewSlot.webview.postMessage(message);
+    if (this.panelSlot?.ready) this.panelSlot.webview.postMessage(message);
   }
 
   private getHtml(webview: vscode.Webview): string {
