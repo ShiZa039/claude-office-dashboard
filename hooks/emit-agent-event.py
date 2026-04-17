@@ -17,7 +17,7 @@ def main():
     os.makedirs(os.path.dirname(event_file), exist_ok=True)
 
     try:
-        raw = sys.stdin.read()
+        raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
         data = json.loads(raw) if raw.strip() else {}
     except (json.JSONDecodeError, Exception):
         data = {}
